@@ -28,23 +28,31 @@ export async function reduceAsync<T, U>(
   iterable: AsyncIterable<T>,
   callbackfn: (
     previousValue: U,
-    currentValue: T,
+    currentValue: Awaited<T>,
     currentIndex: number,
   ) => U,
   initialValue?: U,
 ): Promise<U> {
   if (arguments.length === 2) {
-    let previousValue: U;
-    let skip = true;
+    let previousValue = undefined as U;
+    let isFirst = true;
     for await (const item of iterable) {
-      if (skip) {
-        previousValue = item;
-        skip = false;
-        continue;
+      if (isFirst) {
+        previousValue = item as U;
+        isFirst = false;
+      } else {
+        previousValue = callbackfn(previousValue, item, 0);
       }
+    }
+    if (isFirst) {
+      throw new TypeError("Reduce of empty array with no initial value");
+    }
+    return previousValue;
+  } else {
+    let previousValue = initialValue as U;
+    for await (const item of iterable) {
       previousValue = callbackfn(previousValue, item, 0);
     }
-    return previousValue as unknown as U;
+    return previousValue;
   }
 }
-[].reduce;
